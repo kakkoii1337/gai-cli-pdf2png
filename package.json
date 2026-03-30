@@ -1,0 +1,37 @@
+{
+    "name": "gai-cli-pdf2png",
+    "version": "1.0.0",
+    "description": "CLI tool for converting PDF pages to PNG images",
+    "type": "module",
+    "main": "src/index.js",
+    "bin": {
+        "pdf2png": "src/index.js"
+    },
+    "scripts": {
+        "start": "node src/index.js"
+    },
+    "keywords": [
+        "cli",
+        "pdf",
+        "png",
+        "converter",
+        "image"
+    ],
+    "author": "kakkoii1337 <kakkoii1337@gmail.com>",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/kakkoii1337/gai-cli-pdf2png.git"
+    },
+    "bugs": {
+        "url": "https://github.com/kakkoii1337/gai-cli-pdf2png/issues"
+    },
+    "homepage": "https://github.com/kakkoii1337/gai-cli-pdf2png#readme",
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "dependencies": {
+        "pdf-to-png-converter": "^3.14.0",
+        "pdfjs-dist": "~5.4.624"
+    }
+}
