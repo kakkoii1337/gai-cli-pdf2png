@@ -2,23 +2,6 @@
 name: pdf2png
 description: "CLI tool for converting PDF pages to PNG images. Use when: user wants to convert PDF to images."
 homepage: https://github.com/kakkoii1337/gai-cli-pdf2png
-metadata:
-  {
-    "openclaw":
-      {
-        "emoji": "📄",
-        "requires": { "node": ">=18.0.0" },
-        "install":
-          [
-            {
-              "id": "npm",
-              "kind": "npm",
-              "package": "gai-cli-pdf2png",
-              "label": "Install via npm",
-            },
-          ],
-      },
-  }
 ---
 
 # pdf2png
