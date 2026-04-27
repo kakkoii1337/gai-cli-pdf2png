@@ -5,11 +5,27 @@
  * Usage: pdf2png <pdf-path> [--output-dir=<dir>] [--scale=2.0] [--start-page=1] [--end-page=<last>]
  */
 
-import { pdfToPng } from "pdf-to-png-converter";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
-import { writeFileSync, mkdirSync, existsSync } from "fs";
-import { join, resolve, basename } from "path";
+import { Canvas } from "@napi-rs/canvas";
+import { writeFileSync, mkdirSync, existsSync, readFileSync } from "fs";
+import { join, resolve, basename, dirname } from "path";
 import { randomUUID } from "crypto";
+import { pathToFileURL } from "url";
+import { createRequire } from "module";
+
+const require = createRequire(import.meta.url);
+
+// Build file:// URLs for pdfjs-dist assets using the package's own node_modules
+// so paths are correct regardless of the caller's working directory.
+// (pdf-to-png-converter resolves these from process.cwd(), producing Windows
+// backslash paths that pdfjs-dist rejects as invalid URLs on Windows.)
+function getPdfjsAssetUrl(assetRelPath) {
+    const pdfjsDir = dirname(require.resolve("pdfjs-dist/package.json"));
+    return pathToFileURL(join(pdfjsDir, assetRelPath)).href + "/";
+}
+
+const CMAP_URL = getPdfjsAssetUrl("cmaps");
+const STANDARD_FONT_URL = getPdfjsAssetUrl("standard_fonts");
 
 function parseArgs() {
     const args = process.argv.slice(2);
@@ -76,32 +92,44 @@ Examples:
 `);
 }
 
-async function getPageCount(pdfPath) {
-    const loadingTask = getDocument({
-        url: pdfPath,
+async function openPdf(pdfPath) {
+    const data = new Uint8Array(readFileSync(pdfPath));
+    return await getDocument({
+        data,
+        cMapUrl: CMAP_URL,
+        cMapPacked: true,
+        standardFontDataUrl: STANDARD_FONT_URL,
         disableFontFace: true,
         useSystemFonts: false,
-    });
-    const doc = await loadingTask.promise;
-    const pageCount = doc.numPages;
+    }).promise;
+}
+
+async function getPageCount(pdfPath) {
+    const doc = await openPdf(pdfPath);
+    const count = doc.numPages;
     await doc.destroy();
-    return pageCount;
+    return count;
 }
 
 async function convertSinglePage(pdfPath, pageNumber, outputDir, viewportScale) {
-    const pngPages = await pdfToPng(pdfPath, {
-        viewportScale,
-        disableFontFace: true,
-        useSystemFonts: false,
-        pagesToProcess: [pageNumber],
-    });
+    const doc = await openPdf(pdfPath);
+    try {
+        const page = await doc.getPage(pageNumber);
+        const viewport = page.getViewport({ scale: viewportScale });
 
-    if (pngPages.length > 0) {
+        const canvas = new Canvas(Math.round(viewport.width), Math.round(viewport.height));
+        const context = canvas.getContext("2d");
+
+        await page.render({ canvasContext: context, viewport }).promise;
+        page.cleanup();
+
+        const pngBuffer = canvas.toBuffer("image/png");
         const outputPath = join(outputDir, `page-${String(pageNumber).padStart(3, "0")}.png`);
-        writeFileSync(outputPath, pngPages[0].content);
+        writeFileSync(outputPath, pngBuffer);
         return outputPath;
+    } finally {
+        await doc.destroy();
     }
-    return null;
 }
 
 async function main() {
